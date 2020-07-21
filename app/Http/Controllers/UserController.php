@@ -32,8 +32,8 @@ class UserController extends Controller
             $user->password = $pwd;
 
             // Comprobar usuario duplicado
-            $isset_user = User::where('email','=',$email)->first();
-            $exist = (isset($isset_user) && !empty($isset_user)) ? 'SI':'NO';
+            $user_data = User::where('email','=',$email)->first();
+            $exist = (isset($user_data) && !empty($user_data)) ? 'SI':'NO';
 
             if($exist == 'NO'){
                 // Guardar usuario

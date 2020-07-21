@@ -10,74 +10,48 @@ use App\Car;
 class CarController extends Controller
 {
     private $request;
+    private $hash;
     private $checkToken;
     
     public function __construct(Request $request) {
         $this->request = $request;
-        $hash = $this->request->header('Authorization', null);
+        $this->hash = $this->request->header('Authorization', null);
         // Validar hash y token
-        if(isset($hash)){
+        if(isset($this->hash) && !empty($this->hash)){
             $jwtAuth = new JwtAuth();
-            $this->checkToken = $jwtAuth->checkToken($hash);
-        } else {
-            // Devolver error
-            $data = array(
-                'status' => 'error',
-                'code' => 400,
-                'message' => 'Enviar el token de autenticación'
-            );
-
-            return response()->json($data, 200);
+            $this->checkToken = $jwtAuth->checkToken($this->hash);
         }
     }
 
     public function index(){
-        if($this->checkToken){
-            // Obtener todos los registros
-            $cars = Car::all()->load('user');
+        // Obtener todos los registros
+        $cars = Car::all()->load('user');
 
-            $data = array(
-                'status' => 'success',
-                'code' => 200,
-                'cars' => $cars
-            );
-        } else {
-            // Devolver error
-            $data = array(
-                'status' => 'error',
-                'code' => 400,
-                'message' => 'Login incorrecto'
-            );
-        }
+        $data = array(
+            'status' => 'success',
+            'code' => 200,
+            'cars' => $cars
+        );
 
         return response()->json($data, 200);
     }
 
     public function show($id){
-        if($this->checkToken){
-            // Comprobar que existe el registro
-            $car = Car::find($id);
-            if($car){
-                $car->load('user');
+        // Comprobar que existe el registro
+        $car = Car::find($id);
+        if($car){
+            $car->load('user');
 
-                $data = array(
-                    'status' => 'success',
-                    'code' => 200,
-                    'car' => $car
-                );
-            } else {
-                $data = array(
-                    'status' => 'error',
-                    'code' => 400,
-                    'message' => 'No existe el id ingresado'
-                );
-            }
+            $data = array(
+                'status' => 'success',
+                'code' => 200,
+                'car' => $car
+            );
         } else {
-            // Devolver error
             $data = array(
                 'status' => 'error',
                 'code' => 400,
-                'message' => 'Login incorrecto'
+                'message' => 'No existe el id ingresado'
             );
         }
 
@@ -92,11 +66,12 @@ class CarController extends Controller
             $params_array = json_decode($json, true);
 
             // Obtener los datos del usuario autenticado
-            $user = $jwtAuth->checkToken($hash, true);
+            $jwtAuth = new JwtAuth();
+            $user = $jwtAuth->checkToken($this->hash, true);
 
             // Validación de datos
             $validated = \Validator::make($params_array, [
-                'title' => 'required|min:5',
+                'title' => 'required',
                 'description' => 'required',
                 'price' => 'required',
                 'status' => 'required'
@@ -140,7 +115,7 @@ class CarController extends Controller
 
             // Validación de datos
             $validated = \Validator::make($params_array, [
-                'title' => 'required|min:5',
+                'title' => 'required',
                 'description' => 'required',
                 'price' => 'required',
                 'status' => 'required'
@@ -151,15 +126,20 @@ class CarController extends Controller
             }
 
             //Comprobar que existe el registro
-            $car = Car::find($id);
-            if($car){
+            $carOld = Car::find($id);
+            if($carOld){
                 // Actualizar el registro
-                $car->update($params_array);
+                unset($params_array['id']);
+                unset($params_array['user_id']);
+                unset($params_array['created_at']);
+                unset($params_array['updated_at']);
+                unset($params_array['user']);
+                $car = Car::where('id',$id)->update($params_array);
 
                 $data = array(
                     'status' => 'success',
                     'code' => 200,
-                    'car' => $car
+                    'car' => $carOld
                 );
             } else {
                 $data = array(
